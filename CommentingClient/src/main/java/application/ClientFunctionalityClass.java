@@ -1,17 +1,11 @@
 package application;
 
-import java.io.Console;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
-import javax.imageio.ImageIO;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.ProcessingException;
 import utilities.ConnectionToServerUtilities;
-import utilities.EncryptionUtilities;
 
 /**
  * This class contains the functionality of the client.
@@ -58,11 +52,7 @@ public class ClientFunctionalityClass {
         userNameLocal = this.readInput.nextLine();
         System.out.print("\nEnter password: ");
         passwordLocal = this.readInput.nextLine();
-        String encryptedPasswordLocal =
-            EncryptionUtilities.get_SHA_512_SecurePassword(passwordLocal);
-        //System.out.println(encryptedPasswordLocal);
-        if (ConnectionToServerUtilities.sendCredentialsToServer(userNameLocal, 
-            encryptedPasswordLocal)) {
+        if (ConnectionToServerUtilities.sendCredentialsToServer(userNameLocal, passwordLocal)) {
           /* after I am authenticated I do not care about the password anymore. */
           return userNameLocal;
         }
@@ -72,7 +62,6 @@ public class ClientFunctionalityClass {
       }
     }
   }
-  
   
 
   /**
@@ -102,7 +91,6 @@ public class ClientFunctionalityClass {
         System.out.println("\nHi " + username + ". You have the following notifications");
         System.out.println(response);
       }
-      System.out.println("Press \"P\" | \"p\" to upload a picture: ");
       System.out.println("Available Photos: ");
       response = ConnectionToServerUtilities.receivePhotoCodesFromServer();
       System.out.print(response);
@@ -117,37 +105,7 @@ public class ClientFunctionalityClass {
       if (inputString.equals("q")) {
         System.out.println("Quitting...");
         System.exit(0);
-      } else if (inputString.equals("P")
-          || inputString.equals("p")) {
-    	java.awt.image.BufferedImage img;
-    	String picPath = null;
-        System.out.println("Please choose picture to upload: ");
-
-        UploadImageGui ujp = new UploadImageGui();
-        for (;;) {
-            System.out.println(picPath);
-            picPath = ujp.getFinalPath();
-            if(picPath != null) {
-              System.out.println(picPath);
-              img = ImageIO.read(new FileInputStream(picPath));
-              break;
-            }
-        }
-        System.out.println("Provide an image name: ");
-        String photoName = readInput.nextLine();
-       String result =  ConnectionToServerUtilities.sendImageToServer(img, username, photoName);
-       if (result.equals("OK")) {
-    	   System.out.println("Photo successfully uploaded. Please provide a description for it: ");
-    	   String description = readInput.nextLine();
-    	   ConnectionToServerUtilities.sendDescriptionToServer(username, photoName, description);
-       } else if (result.equals("PHOTO-NAME-TAKEN")) {
-    	   System.out.println("You have already uploaded an image with this name");
-    	   
-       } else {
-    	   System.out.println("Photo could not be uploaded");
-       }
-       
-      }else if (inputString.equals("u")) {
+      } else if (inputString.equals("u")) {
         System.out.print("Please enter the username of the user: ");
         String username = readInput.nextLine();
         showCommentsOfUser(username);
@@ -160,31 +118,9 @@ public class ClientFunctionalityClass {
     } catch (NoSuchElementException e) {
       System.out.println("\nAn empty line is not a proper input");
       System.exit(1);
-    } catch (FileNotFoundException e) {
-		// TODO Auto-generated catch block
-		e.printStackTrace();
-	} catch (IOException e) {
-		// TODO Auto-generated catch block
-		e.printStackTrace();
-	}
+    }
   }
   
-  
-  public void showRatingsOfPhoto(String photoCode) {
-	  String response = ConnectionToServerUtilities.receiveRatingsOfPhoto(photoCode);
-	  if (response.equals("No ratings")) {
-	      System.out.println("There are no ratings on this photo so far.");
-	      showOptionsLevel1(photoCode);
-	    } else if (response.equals("Wrong input")) {
-	      System.out.println("You provided wrong input, no such photo exists.");
-	      showOptionsLevel0();
-	    } else {
-	      System.out.println("Below you may find the ratings of the photo:\n");
-	      System.out.println(response);
-	      showOptionsLevel1(photoCode);
-	    }
-  }
-
   /**
    * Show the comments under a specific photo.
    * @param photoCode The code of the photo.
@@ -260,14 +196,13 @@ public class ClientFunctionalityClass {
     System.out.println("Press 3 to comment on another comment");
     System.out.println("Press 4 to up/down vote on another comment");
     System.out.println("Press 5 to see replies to a comment");
-    System.out.println("Press 6 to rate the photo");
     if (admin) {
-      System.out.println("Press 7 to remove comment.");
+      System.out.println("Press 6 to remove comment.");
     }
     System.out.print("Please select your option: ");
     try {
       String input = readInput.nextLine();
-      if (admin && input.equals("7")) {
+      if (admin && input.equals("6")) {
         System.out.println("Please specify the comment you wish to remove. Use the dotted format,"
             + " like 2.1.3, as presented above within the parentheses");
         String insertedCommentCode = readInput.nextLine();
@@ -301,11 +236,6 @@ public class ClientFunctionalityClass {
         String vote = insertVote();
         ConnectionToServerUtilities.sendVoteToServer(username,
             insertedCommentCode, photoCode, vote);
-        showCommentsOfPhoto(photoCode);
-      } else if (input.equals("6")) {
-        String rating = insertRating();
-        ConnectionToServerUtilities.sendRatingToServer(username,
-            photoCode, rating);
         showCommentsOfPhoto(photoCode);
       } else {
         System.out.println("You provided an incorrect option");
@@ -342,31 +272,5 @@ public class ClientFunctionalityClass {
       return "false";
     }
     return "true"; // Default: up vote
-  }
-  
-  /**
-   * Insert rating.
- * @return 
-   */
-  public String insertRating() {
-    System.out.println("Please insert number of stars: \nAcceptable inputs: [1,2,3,4,5]: ");
-    String rating = null;
-    try {
-      rating = readInput.nextLine();
-      if (rating.equals("1") || rating.equals("2") 
-          || rating.equals("3") 
-          || rating.equals("4") || rating.equals("5")) {
-      } else {
-        System.out.println("Not acceptable input: ");
-        return insertRating();
-      }
-    } catch (NotFoundException e) {
-      System.out.print("The key \"Enter\" is not an acceptable input\n");
-      return insertRating();
-    } catch (NoSuchElementException ne) {
-      System.out.println("\nAn empty line is not a proper input");
-      System.exit(1);
-    }
-    return rating;
   }
 }
